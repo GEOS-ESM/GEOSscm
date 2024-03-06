@@ -39,7 +39,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - name: Checkout SCM
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 1
       - name: Set all directories as git safe
