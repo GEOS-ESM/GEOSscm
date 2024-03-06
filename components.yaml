@@ -48,7 +48,7 @@ MAPL:
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  tag: v2.5.2
+  branch: feature/mathomp4/scm-fixture
   sparse: ./config/GEOSgcm_GridComp.sparse
   develop: develop
 
@@ -105,19 +105,6 @@ GEOS_OceanGridComp:
   remote: ../GEOS_OceanGridComp.git
   tag: v2.1.6
   develop: develop
-
-mom:
-  local: ./src/Components/@GEOSgcm_GridComp/GEOSogcm_GridComp/@GEOS_OceanGridComp/MOM_GEOS5PlugMod/@mom
-  remote: ../MOM5.git
-  tag: geos/5.1.0+1.2.0
-  develop: geos5
-
-mom6:
-  local: ./src/Components/@GEOSgcm_GridComp/GEOSogcm_GridComp/@GEOS_OceanGridComp/MOM6_GEOSPlug/@mom6
-  remote: ../MOM6.git
-  tag: geos/v3.1
-  develop: main
-  recurse_submodules: true
 
 mit:
   local: ./src/Components/@GEOSgcm_GridComp/GEOSogcm_GridComp/@GEOS_OceanGridComp/MIT_GEOS5PlugMod/@mit
