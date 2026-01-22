@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.17)
+cmake_minimum_required (VERSION 3.24)
 cmake_policy (SET CMP0053 NEW)
 cmake_policy (SET CMP0054 NEW)
 
@@ -33,12 +33,16 @@ foreach (dir cmake @cmake cmake@)
     set (ESMA_CMAKE_PATH "${CMAKE_CURRENT_LIST_DIR}/${dir}" CACHE PATH "Path to ESMA_cmake code")
   endif ()
 endforeach ()
+
+# We need to find MPI before we go into esma
+# for the MPI stack detection to work
+set(MPI_DETERMINE_LIBRARY_VERSION TRUE)
+find_package(MPI)
+
 include (esma)
 
 # Add CMake for when not using Baselibs
 if (NOT Baselibs_FOUND)
-  set(MPI_DETERMINE_LIBRARY_VERSION TRUE)
-  find_package(MPI)
 
   find_package(NetCDF REQUIRED C Fortran)
   add_definitions(-DHAS_NETCDF4)
@@ -51,31 +55,18 @@ if (NOT Baselibs_FOUND)
      add_definitions(-DH5_HAVE_PARALLEL)
   endif()
 
-  if (NOT TARGET esmf)
-    if (DEFINED ENV{esmf_ROOT})
-      message (STATUS "Found esmf_ROOT in environment: $ENV{esmf_ROOT}")
-      find_path(ESMF_CMAKE_PATH FindESMF.cmake HINTS "$ENV{esmf_ROOT}/cmake")
-      message (STATUS "Found FindESMF.cmake in: ${ESMF_CMAKE_PATH}")
-      if (ESMF_CMAKE_PATH)
-        message (STATUS "Appending to CMAKE_PREFIX_PATH: ${ESMF_CMAKE_PATH}")
-        list (APPEND CMAKE_MODULE_PATH ${ESMF_CMAKE_PATH})
-      endif ()
+  if (NOT TARGET ESMF::ESMF)
+    find_package(ESMF 8.6.1 MODULE REQUIRED)
+    target_link_libraries(ESMF::ESMF INTERFACE MPI::MPI_Fortran)
+
+    # GEOS uses lowercase target due to historical reasons but
+    # the latest FindESMF.cmake file from ESMF produces an ESMF::ESMF target.
+    if (NOT TARGET esmf)
+      add_library(esmf ALIAS ESMF::ESMF)
     endif ()
-
-    find_package(ESMF MODULE REQUIRED)
-
-    # ESMF as used in MAPL requires MPI
-    # NOTE: This looks odd because some versions of FindESMF.cmake out in the
-    #       world provide an "esmf" target while others provide "ESMF". So we
-    #       need this ugliness to support both.
-    if (TARGET esmf)
-      target_link_libraries(esmf INTERFACE MPI::MPI_Fortran)
-    else()
-      target_link_libraries(ESMF INTERFACE MPI::MPI_Fortran)
-      # MAPL and GEOS use lowercase target due to historical reasons but
-      # the latest FindESMF.cmake file from ESMF produces an ESMF target.
-      add_library(esmf ALIAS ESMF)
-    endif()
+    if (NOT TARGET ESMF)
+      add_library(ESMF ALIAS ESMF::ESMF)
+    endif ()
   endif ()
 
   find_package(GFTL_SHARED REQUIRED)
@@ -83,6 +74,11 @@ if (NOT Baselibs_FOUND)
   find_package(ZLIB REQUIRED)
   # Another issue with historical reasons, old/wrong zlib target used in GEOS
   add_library(ZLIB::zlib ALIAS ZLIB::ZLIB)
+
+  find_package(MAPL 2.64 QUIET)
+  if (MAPL_FOUND)
+    message(STATUS "Found MAPL: ${MAPL_BASE_DIR} (found version \"${MAPL_VERSION})\"")
+  endif ()
 
 endif ()
 
@@ -98,6 +94,9 @@ esma_mepo_style(env env_dir)
 esma_add_subdirectory (${env_dir})
 # Recursively build source tree
 add_subdirectory (src)
+
+configure_file(BUILD_INFO.rc.in BUILD_INFO.rc @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/BUILD_INFO.rc DESTINATION etc)
 
 # https://www.scivision.dev/cmake-auto-gitignore-build-dir/
 # --- auto-ignore build directory
